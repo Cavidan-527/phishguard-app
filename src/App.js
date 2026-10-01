@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-// Live Render Backend URL
 const BACKEND_URL = 'https://phishguard-backend-smit.onrender.com';
 
-// 1. Saxta Login Və Mikro-Təlim Səhifəsi (/landing)
+// 1. Saxta Landing & Mikro-Təlim Səhifəsi
 function LandingPage() {
   const [submitted, setSubmitted] = useState(false);
 
@@ -66,7 +65,7 @@ function LandingPage() {
   );
 }
 
-// 2. Əsas Admin Dashboard (80% UI Platforması)
+// 2. Əsas Admin Dashboard (80% UI)
 export default function App() {
   const [email, setEmail] = useState('');
   const [template, setTemplate] = useState('it_support');
@@ -100,9 +99,23 @@ export default function App() {
         body: JSON.stringify({ email, template })
       });
       const data = await res.json();
-      setStats(data);
+      
+      const generatedLink = data.previewUrl || data.lastPreviewUrl || data.url;
+
+      setStats(prev => ({
+        ...prev,
+        sent: data.sent !== undefined ? data.sent : prev.sent + 1,
+        clicks: data.clicks !== undefined ? data.clicks : prev.clicks,
+        lastPreviewUrl: generatedLink || prev.lastPreviewUrl,
+        logs: data.logs || [
+          { email, date: new Date().toLocaleTimeString(), status: 'Göndərildi 🟢' },
+          ...prev.logs
+        ]
+      }));
+
       setEmail('');
     } catch (e) {
+      console.error("Xəta:", e);
       alert("Simulyasiya göndərilərkən xəta baş verdi.");
     } finally {
       setLoading(false);
@@ -119,7 +132,7 @@ export default function App() {
     <div style={{ padding: '30px', fontFamily: 'Arial, sans-serif', backgroundColor: '#1e1e2f', color: '#fff', minHeight: '100vh' }}>
       {/* HEADER NAV */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #3b3b58', paddingBottom: '15px', marginBottom: '25px' }}>
-        <h2>🛡️️ PhishGuard Platform (80% UI Ready)</h2>
+        <h2>🛡 PhishGuard Platform (80% UI Ready)</h2>
         <div>
           <button onClick={() => setActiveTab('dashboard')} style={{ background: activeTab === 'dashboard' ? '#3498db' : '#2d2d44', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '5px', cursor: 'pointer', marginRight: '10px' }}>Dashboard</button>
           <button onClick={() => setActiveTab('templates')} style={{ background: activeTab === 'templates' ? '#3498db' : '#2d2d44', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '5px', cursor: 'pointer', marginRight: '10px' }}>Templates</button>
