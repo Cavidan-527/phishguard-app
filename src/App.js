@@ -6,6 +6,26 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 const API_BASE = process.env.REACT_APP_API_BASE || 'https://phishguard-backend-smit.onrender.com';
 
+// Wraps fetch with a hard timeout so the UI never stays stuck waiting
+// forever on a slow/cold-starting backend (common on free hosting tiers).
+async function fetchWithTimeout(url, options = {}, timeoutMs = 25000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(
+        'Server vaxtında cavab vermədi (25san). Backend "yatmış" ola bilər (Render cold-start) — bir neçə saniyə sonra yenidən cəhd edin.'
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // STATIC DATA
 // ---------------------------------------------------------------------------
@@ -266,11 +286,15 @@ function LandingPage() {
       setSubmitting(true);
       setError('');
       try {
-        await fetch(`${API_BASE}/api/track`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: username }),
-        });
+        await fetchWithTimeout(
+          `${API_BASE}/api/track`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: username }),
+          },
+          10000
+        );
       } catch (err) {
         setError('Qeydiyyat zamanı şəbəkə xətası (davam edilir).');
       } finally {
@@ -414,7 +438,7 @@ function DashboardTab({ stats, refreshStats }) {
       setFeedback(null);
 
       try {
-        const res = await fetch(`${API_BASE}/api/send`, {
+        const res = await fetchWithTimeout(`${API_BASE}/api/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, template }),
@@ -616,7 +640,7 @@ function App() {
 
   const refreshStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/stats`);
+      const res = await fetchWithTimeout(`${API_BASE}/api/stats`, {}, 15000);
       if (!res.ok) throw new Error('Stats sorğusu uğursuz oldu.');
       const data = await res.json();
       setStats(data);
