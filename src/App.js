@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-// Saxta Təlim və Landing Səhifəsi Component-i
+// Live Render Backend URL
+const BACKEND_URL = 'https://phishguard-backend-smit.onrender.com';
+
+// 1. Saxta Login Və Mikro-Təlim Səhifəsi (/landing)
 function LandingPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await fetch('https://phishguard-api.onrender.com/api/track', { method: 'POST' });
+    try {
+      await fetch(`${BACKEND_URL}/api/track`, { method: 'POST' });
+    } catch (err) {
+      console.error("Tracking error:", err);
+    }
     setSubmitted(true);
   };
 
@@ -15,13 +22,13 @@ function LandingPage() {
       <div style={{ padding: '60px', fontFamily: 'sans-serif', textAlign: 'center', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
         <div style={{ background: '#fff', padding: '40px', borderRadius: '12px', maxWidth: '600px', margin: '0 auto', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
           <h1 style={{ color: '#e74c3c' }}>🚨 DİQQƏT! PhishGuard Fişinq Simulyasiyası</h1>
-          <p style={{ fontSize: '18px', color: '#2c3e50' }}>Siz az əvvəl simulyasiya edilmiş təhlükəli forma məlumatı daxil etdiniz!</p>
+          <p style={{ fontSize: '18px', color: '#2c3e50' }}>Siz az əvvəl simulyasiya edilmiş təhlükəli formaya məlumat daxil etdiniz!</p>
           <hr />
           <div style={{ textAlign: 'left', background: '#edf2f7', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
             <h4 style={{ color: '#2c3e50', marginTop: 0 }}>💡 Nəyə diqqət etməli idiniz?</h4>
             <ul style={{ color: '#4a5568', lineHeight: '1.6' }}>
               <li>Göndərən ünvanın domeninə (IT-Support@your-company.com)[cite: 5]</li>
-              <li>Səhifənin daxil olduğu domeni rəsmi portal ilə müqayisə edin</li>
+              <li>Səhifənin veb ünvanına (domen adı rəsmi portal ilə uyğun deyil)</li>
               <li>Məktubdakı təcili təzyiq hissinə ("24 saat ərzində")[cite: 5]</li>
             </ul>
           </div>
@@ -59,12 +66,48 @@ function LandingPage() {
   );
 }
 
-// Main App Dashboard (80% Feature UI)
+// 2. Əsas Admin Dashboard (80% UI Platforması)
 export default function App() {
   const [email, setEmail] = useState('');
   const [template, setTemplate] = useState('it_support');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [stats] = useState({ sent: 24, clicks: 5, lastPreviewUrl: '', logs: [] });
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({ sent: 0, clicks: 0, lastPreviewUrl: '', logs: [] });
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/stats`);
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch (e) {
+      console.error("Stats fetch error:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const sendSimulation = async () => {
+    if (!email) return alert("Zəhmət olmasa hədəf email daxil edin!");
+    setLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, template })
+      });
+      const data = await res.json();
+      setStats(data);
+      setEmail('');
+    } catch (e) {
+      alert("Simulyasiya göndərilərkən xəta baş verdi.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (window.location.pathname === '/landing') {
     return <LandingPage />;
@@ -74,9 +117,9 @@ export default function App() {
 
   return (
     <div style={{ padding: '30px', fontFamily: 'Arial, sans-serif', backgroundColor: '#1e1e2f', color: '#fff', minHeight: '100vh' }}>
-      {/* HEADER & NAV */}
+      {/* HEADER NAV */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #3b3b58', paddingBottom: '15px', marginBottom: '25px' }}>
-        <h2>🛡️ PhishGuard Platform (80% Completed UI)</h2>
+        <h2>🛡️️ PhishGuard Platform (80% UI Ready)</h2>
         <div>
           <button onClick={() => setActiveTab('dashboard')} style={{ background: activeTab === 'dashboard' ? '#3498db' : '#2d2d44', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '5px', cursor: 'pointer', marginRight: '10px' }}>Dashboard</button>
           <button onClick={() => setActiveTab('templates')} style={{ background: activeTab === 'templates' ? '#3498db' : '#2d2d44', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '5px', cursor: 'pointer', marginRight: '10px' }}>Templates</button>
@@ -86,10 +129,10 @@ export default function App() {
 
       {activeTab === 'dashboard' && (
         <>
-          {/* STATS KARTLARI */}
+          {/* STATS CARDS */}
           <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
             <div style={{ background: '#2d2d44', padding: '20px', borderRadius: '8px', flex: 1, borderLeft: '5px solid #3498db' }}>
-              <h3>Ümumi Göndərilən</h3>
+              <h3>Göndərilən Simulyasiya</h3>
               <h1 style={{ color: '#3498db' }}>{stats.sent}</h1>
             </div>
             <div style={{ background: '#2d2d44', padding: '20px', borderRadius: '8px', flex: 1, borderLeft: '5px solid #e74c3c' }}>
@@ -102,9 +145,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* KAMPANİYA BAŞLATMA FORMASI */}
+          {/* CAMPAIGN FORM */}
           <div style={{ background: '#2d2d44', padding: '25px', borderRadius: '8px', marginBottom: '30px' }}>
-            <h3>🚀 Simulyasiya Kampaniyası Yaradın</h3>
+            <h3>🚀 Canlı Simulyasiya Kampaniyası Başlat</h3>
             <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
               <input 
                 type="email" 
@@ -122,10 +165,44 @@ export default function App() {
                 <option value="hr_notice">HR Notice - Məzuniyyət Qrafiki</option>
                 <option value="finance_invoice">Finance - Təcili Invoice Ödənişi</option>
               </select>
-              <button onClick={() => alert("Kampaniya deploy olunmuş serverdən göndərildi!")} style={{ background: '#e74c3c', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                Kampaniyanı Başlat
+              <button onClick={sendSimulation} disabled={loading} style={{ background: '#e74c3c', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {loading ? "Göndərilir..." : "Simulyasiyanı Göndər"}
               </button>
             </div>
+
+            {stats.lastPreviewUrl && (
+              <div style={{ marginTop: '20px', padding: '15px', background: '#3b3b58', borderRadius: '6px' }}>
+                <span>📧 Simulyasiya Məktubu Göndərildi! Test üçün e-poçtu açın: </span>
+                <a href={stats.lastPreviewUrl} target="_blank" rel="noreferrer" style={{ color: '#1abc9c', fontWeight: 'bold', marginLeft: '10px' }}>
+                  [Gələn E-poçtu Aç (In-box Preview)]
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* AUDIT LOGS */}
+          <div style={{ background: '#2d2d44', padding: '25px', borderRadius: '8px' }}>
+            <h3>📊 Kampaniya Logları</h3>
+            {stats.logs.length === 0 ? <p style={{ color: '#aaa' }}>Hələ heç bir simulyasiya göndərilməyib.</p> : (
+              <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #444', color: '#aaa' }}>
+                    <th style={{ padding: '10px 0' }}>Hədəf Email</th>
+                    <th>Vaxt</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.logs.map((log, index) => (
+                    <tr key={index} style={{ borderBottom: '1px solid #3b3b58' }}>
+                      <td style={{ padding: '12px 0' }}>{log.email}</td>
+                      <td>{log.date}</td>
+                      <td style={{ color: log.status.includes('🚨') ? '#e74c3c' : '#2ecc71' }}>{log.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}
@@ -134,15 +211,15 @@ export default function App() {
         <div style={{ background: '#2d2d44', padding: '25px', borderRadius: '8px' }}>
           <h3>📧 Fişinq Şablonları Kitabxanası</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginTop: '20px' }}>
-            <div style={{ background: '#3b3b58', padding: '15px', borderRadius: '8px' }}>
+            <div style={{ background: '#3b3b58', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3498db' }}>
               <h4>🔐 IT Password Expiration</h4>
-              <p style={{ fontSize: '13px', color: '#ccc' }}>İstifadəçiyə hesabının dondurulmaması üçün təcili linkə daxil olmasını tələb edir.</p>
+              <p style={{ fontSize: '13px', color: '#ccc' }}>Hesabın dondurulmaması üçün şifrənin təcili yenilənməsini tələb edir.</p>
             </div>
-            <div style={{ background: '#3b3b58', padding: '15px', borderRadius: '8px' }}>
+            <div style={{ background: '#3b3b58', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #2ecc71' }}>
               <h4>🏖️ HR Leave Request</h4>
-              <p style={{ fontSize: '13px', color: '#ccc' }}>Məzuniyyət günlərinin təsdiqlənməsi adı ilə saxta link təqdim edir.</p>
+              <p style={{ fontSize: '13px', color: '#ccc' }}>Məzuniyyət günlərinin təsdiqlənməsi adı ilə saxta portal linki təqdim edir.</p>
             </div>
-            <div style={{ background: '#3b3b58', padding: '15px', borderRadius: '8px' }}>
+            <div style={{ background: '#3b3b58', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #e74c3c' }}>
               <h4>💳 Unpaid Invoice Notice</h4>
               <p style={{ fontSize: '13px', color: '#ccc' }}>Maliyyə şöbəsi adından ödəniş tələb edən inandırıcı e-poçt şablonu.</p>
             </div>
