@@ -438,11 +438,15 @@ function DashboardTab({ stats, refreshStats }) {
       setFeedback(null);
 
       try {
-        const res = await fetchWithTimeout(`${API_BASE}/api/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, template }),
-        });
+        const res = await fetchWithTimeout(
+          `${API_BASE}/api/send`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, template }),
+          },
+          45000
+        );
 
         const data = await res.json();
 
@@ -454,6 +458,7 @@ function DashboardTab({ stats, refreshStats }) {
           type: 'success',
           message: data.message || 'Simulyasiya uğurla göndərildi.',
           previewUrl: data.previewUrl,
+          deliveryMode: data.deliveryMode || 'real',
         });
 
         setEmail('');
@@ -517,7 +522,24 @@ function DashboardTab({ stats, refreshStats }) {
 
         {feedback && (
           <div style={styles.alertBox(feedback.type)}>
-            <div>{feedback.message}</div>
+            <div>
+              {feedback.message}
+              {feedback.deliveryMode === 'simulated' && (
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    background: 'rgba(234,179,8,0.2)',
+                    color: '#fde68a',
+                    fontWeight: 700,
+                  }}
+                >
+                  SİMULYASİYA REJİMİ
+                </span>
+              )}
+            </div>
             {feedback.previewUrl && (
               <a
                 href={feedback.previewUrl}
@@ -525,7 +547,7 @@ function DashboardTab({ stats, refreshStats }) {
                 rel="noopener noreferrer"
                 style={styles.previewLink}
               >
-                📬 Gələn E-poçtu Aç (Inbox Preview)
+                📬 {feedback.deliveryMode === 'simulated' ? 'E-poçt Məzmununa Bax' : 'Gələn E-poçtu Aç (Inbox Preview)'}
               </a>
             )}
           </div>
